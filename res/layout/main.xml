@@ -8,5 +8,20 @@
     android:layout_width="fill_parent" 
     android:layout_height="wrap_content" 
     android:text="@string/hello"
+    android:textSize="30sp"
     />
+<CheckBox
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    android:text="Button State"
+    android:textSize="30sp"
+    android:id="@+id/buttoncheck"
+/>
+<CheckBox
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    android:text="LED State"
+    android:textSize="30sp"
+    android:id="@+id/ledcheck"
+/>
 </LinearLayout>
