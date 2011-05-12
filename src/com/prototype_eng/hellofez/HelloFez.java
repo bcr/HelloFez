@@ -38,6 +38,11 @@ class FezController
         return sendCommand(2);
     }
 
+    public boolean isButtonPressed() throws IOException
+    {
+        return (sendCommand(3) & 0x80) != 0;
+    }
+
     private int sendCommand(int command) throws IOException
     {
         synchronized (outputStream)
@@ -52,6 +57,8 @@ public class HelloFez extends Activity {
     private static final String TAG = "HelloFez";
     private FezController fezController;
     private CheckBox ledcheck;
+    private CheckBox buttoncheck;
+    private Thread buttonthread;
 
     /** Called when the activity is first created. */
     @Override
@@ -61,16 +68,19 @@ public class HelloFez extends Activity {
         maybeCreateFezController();
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
+
         ledcheck = (CheckBox) findViewById(R.id.ledcheck);
-        ledcheck.setOnCheckedChangeListener(new OnCheckedChangeListener()
-            {
-                @Override
-                public void onCheckedChanged(CompoundButton buttonView,
-                                             boolean isChecked)
+        buttoncheck = (CheckBox) findViewById(R.id.buttoncheck);
+
+        if (fezController != null)
+        {
+            ledcheck.setOnCheckedChangeListener(new OnCheckedChangeListener()
                 {
-                    Log.v(TAG, "OnCheckedChanged " + isChecked);
-                    if (fezController != null)
+                    @Override
+                    public void onCheckedChanged(CompoundButton buttonView,
+                                                 boolean isChecked)
                     {
+                        Log.v(TAG, "OnCheckedChanged " + isChecked);
                         try
                         {
                             if (isChecked)
@@ -87,8 +97,48 @@ public class HelloFez extends Activity {
                             Log.v(TAG, "Unexpected exception", e);
                         }
                     }
-                }
-            });
+                });
+            buttonthread = new Thread(new Runnable()
+                {
+                    @Override
+                    public void run()
+                    {
+                        while (true)
+                        {
+                            try
+                            {
+                                Thread.sleep(500);
+                                buttoncheck.post(new Runnable()
+                                    {
+                                        @Override
+                                        public void run()
+                                        {
+                                            boolean newButtonState = false;
+                                            try
+                                            {
+                                                newButtonState = fezController.isButtonPressed();
+                                            }
+                                            catch (IOException e)
+                                            {
+                                                Log.v(TAG, "Unexpected exception", e);
+                                            }
+                                            if (newButtonState != buttoncheck.isChecked())
+                                            {
+                                                buttoncheck.setChecked(newButtonState);
+                                            }
+                                        }
+                                    });
+                            }
+                            catch (InterruptedException e)
+                            {
+                                Log.v(TAG, "Unexpected exception", e);
+                                break;
+                            }
+                        }
+                    }
+                });
+            buttonthread.start();
+        }
     }
 
     private void maybeCreateFezController()
@@ -102,15 +152,6 @@ public class HelloFez extends Activity {
             Log.v(TAG, "Got an accessory and a manager");
             fezController = new FezController(usbManager, accessory);
             Log.v(TAG, "Controller constructed");
-            try
-            {
-                Log.v(TAG, "ledOn returned " + fezController.ledOn());
-                Log.v(TAG, "ledOff returned " + fezController.ledOff());
-            }
-            catch (IOException e)
-            {
-                Log.v(TAG, "Unexpected exception", e);
-            }
         }
     }
 }
